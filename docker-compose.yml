@@ -1,0 +1,94 @@
+version: "3.7"
+services:
+  #PHP Service
+  myapp:
+    build:
+      args:
+        user: dream71
+        uid: 1000
+      context: .
+      dockerfile: .docker/Dockerfile
+    image: myapp
+    restart: unless-stopped
+    working_dir: /var/www/
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - myapp_network
+
+  #MySQL Service
+  myapp_db:
+    image: mysql:8.0
+    container_name: myapp_db
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_DB_PORT}:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - myapp_mysql_data:/var/lib/mysql
+    networks:
+      - myapp_network
+
+  #Nginx Service
+  myapp_nginx:
+    image: nginx:alpine
+    container_name: myapp_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "${DOCKER_APP_PORT}:80"
+      - "${DOCKER_APP_SSL_PORT}:443"
+    volumes:
+      - ./:/var/www
+      - ./.docker/nginx/conf.d/:/etc/nginx/conf.d/
+      - ./.docker/nginx/certs:/etc/nginx/certs
+    networks:
+      - myapp_network
+  # phpmyadmin service
+  myapp_phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    container_name: myapp_phpmyadmin
+    depends_on:
+      - myapp_db
+    ports:
+      - "${DOCKER_PHPMYADMIN_PORT}:80"
+    environment:
+      PMA_HOST: myapp_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      UPLOAD_LIMIT: 300M
+    networks:
+      - myapp_network
+
+  myapp_redis_cache:
+    image: redis:alpine
+    restart: always
+    container_name: myapp_redis_cache
+    ports:
+      - '${DOCKER_REDIS_PORT}:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - myapp_cache:/data
+    networks:
+      - myapp_network
+
+#Docker Networks
+networks:
+  myapp_network:
+    driver: bridge
+
+#Volumes
+volumes:
+  myapp_mysql_data:
+  myapp_cache:
