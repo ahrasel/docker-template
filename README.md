@@ -115,4 +115,4 @@ You can customize the project in the following ways:
 
 ## License
 
-This project is licensed under the [LICENSE NAME] - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT LICENSE - see the [LICENSE.md](LICENSE.md) file for details.
